@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi design system fallaba accesibilidad y no me enteré hasta que lo medí — Majo Ledesma</title>
+<meta name="description" content="Un azul que me encantaba daba 2,81:1 sobre su propio texto. El mínimo es 4,5. Cómo encontré el error en mi propio design system y qué cambié para que no vuelva a pasar.">
+<meta name="author" content="Majo Ledesma">
+
+<meta property="og:type" content="article">
+<meta property="og:title" content="Mi design system fallaba accesibilidad y no me enteré hasta que lo medí">
+<meta property="og:description" content="Un azul que me encantaba daba 2,81:1 sobre su propio texto. El mínimo es 4,5.">
+<meta property="og:locale" content="es_AR">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=Playfair+Display:wght@500;600;700&family=Oswald:wght@400;500&display=swap">
+
+<style>
+/* ————————————————————————————————————————————————
+   Aura · los roles semánticos como custom properties.
+   Cambiar de tema reescribe estas variables y nada más.
+   ———————————————————————————————————————————————— */
+:root {
+  --bg: #FBFBED; --elevated: #DBD4C6; --border: #B7ADA0;
+  --text: #271209; --text-2: #66564B; --accent: #69261F;
+  --action-soft: #DBD4C6; --on-action: #FBFBED;
+  --hero: #69261F; --on-hero: #FBFBED; --on-hero-2: #DBD4C6;
+  --hero-border: #8A3A2C; --hero-accent: #DBD4C6;
+  --highlight: #DBD4C6; --on-highlight: #271209;
+  --display: "Playfair Display", Georgia, serif; --display-w: 700;
+  --body: "Jost", system-ui, sans-serif;
+  --eyebrow: "Oswald", system-ui, sans-serif; --eyebrow-w: 500; --eyebrow-track: 0.16em;
+}
+[data-theme="blush"] {
+  --bg: #F6EDE5; --elevated: #EDD8C5; --border: #CAA6AD;
+  --text: #4B1B21; --text-2: #73474D; --accent: #8E3F4E;
+  --action-soft: #F4C9D6; --on-action: #F6EDE5;
+  --hero: #F4C9D6; --on-hero: #4B1B21; --on-hero-2: #73474D;
+  --hero-border: #CAA6AD; --hero-accent: #8E3F4E;
+  --highlight: #F4C9D6; --on-highlight: #4B1B21;
+}
+[data-theme="signal"] {
+  --bg: #F2F3EE; --elevated: #D8E2ED; --border: #C2C2BF;
+  --text: #020001; --text-2: #565554; --accent: #3363AE;
+  --action-soft: #D8E2ED; --on-action: #F2F3EE;
+  --hero: #3363AE; --on-hero: #F2F3EE; --on-hero-2: #E4EBF3;
+  --hero-border: #4384E8; --hero-accent: #FCFCA2;
+  --highlight: #FCFCA2; --on-highlight: #020001;
+}
+[data-theme="matcha"] {
+  --bg: #F1F4E9; --elevated: #C8D2A6; --border: #A6B18A;
+  --text: #1D2E1B; --text-2: #48573E; --accent: #1D2E1B;
+  --action-soft: #C8D2A6; --on-action: #F1F4E9;
+  --hero: #1D2E1B; --on-hero: #F1F4E9; --on-hero-2: #C8D2A6;
+  --hero-border: #33472F; --hero-accent: #A9C632;
+  --highlight: #A9C632; --on-highlight: #1D2E1B;
+}
+[data-theme="noir"] {
+  --bg: #1C1720; --elevated: #2A2430; --border: #3E3745;
+  --text: #F5F1EA; --text-2: #A79BAB; --accent: #C9A96E;
+  --action-soft: #2A2430; --on-action: #1C1720;
+  --hero: #2A2430; --on-hero: #F5F1EA; --on-hero-2: #A79BAB;
+  --hero-border: #3E3745; --hero-accent: #C9A96E;
+  --highlight: #C9A96E; --on-highlight: #1C1720;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--body); font-weight: 400;
+  transition: background 320ms ease, color 320ms ease;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+::selection { background: var(--action-soft); color: var(--text); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 40px; }
+.eyebrow {
+  font-family: var(--eyebrow); font-weight: var(--eyebrow-w); font-size: 12px;
+  letter-spacing: var(--eyebrow-track); text-transform: uppercase;
+}
+.display { font-family: var(--display); font-weight: var(--display-w); letter-spacing: -0.02em; }
+.mono { font-family: ui-monospace, Menlo, monospace; }
+
+/* nav */
+header.nav { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; gap: 20px; padding: 18px 40px; flex-wrap: wrap; }
+.wordmark { font-family: var(--display); font-weight: var(--display-w); font-size: 27px; line-height: 1; letter-spacing: -0.01em; }
+.nav-meta { color: var(--text-2); font-size: 11px; }
+.switcher { margin-left: auto; display: flex; gap: 8px; }
+.sw {
+  display: flex; align-items: center; gap: 3px; padding: 6px;
+  border-radius: 999px; cursor: pointer; background: transparent;
+  border: 1px solid var(--border); transition: border-color 160ms, background 160ms;
+}
+.sw[aria-pressed="true"] { background: var(--action-soft); border-color: var(--accent); }
+.sw span { width: 13px; height: 13px; border-radius: 999px; display: block; }
+
+/* hero */
+.hero { display: grid; gap: 28px; padding-top: 56px; }
+.hero-main { background: var(--hero); border: 1px solid var(--hero-border); border-radius: 24px; padding: 44px; min-width: 0; transition: background 320ms ease; }
+.hero-main .eyebrow { color: var(--on-hero-2); }
+.hero-main h1 { font-size: clamp(38px, 4.4vw, 62px); line-height: 1.02; color: var(--on-hero); margin: 18px 0 0; text-wrap: pretty; }
+.hero-main h1 .dot { color: var(--hero-accent); }
+.hero-dek { font-size: 17px; line-height: 1.6; color: var(--on-hero-2); margin: 22px 0 0; max-width: 46ch; }
+.hero-chips { display: flex; gap: 9px; margin-top: 28px; flex-wrap: wrap; }
+.chip-hero { font-size: 12px; padding: 7px 14px; border-radius: 999px; color: var(--on-hero); border: 1px solid var(--hero-border); }
+.hero-side { background: var(--elevated); border: 1px solid var(--border); border-radius: 24px; padding: 32px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.hero-side .eyebrow { color: var(--accent); }
+.hero-side p { font-size: 15px; line-height: 1.6; margin: 0; }
+.stats { display: flex; gap: 26px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.stat-v { font-family: var(--display); font-weight: var(--display-w); font-size: 34px; line-height: 1; }
+.stat-v.accent { color: var(--accent); }
+.stat-l { font-size: 12px; color: var(--text-2); margin-top: 6px; }
+
+/* article */
+main { padding-top: 80px; }
+.sec-head { display: flex; align-items: flex-end; gap: 32px; border-top: 1px solid var(--border); padding-top: 22px; flex-wrap: wrap; }
+.sec-head .eyebrow { color: var(--accent); }
+h2 { font-family: var(--display); font-weight: var(--display-w); font-size: clamp(34px, 3.8vw, 54px); line-height: 1.04; letter-spacing: -0.02em; margin: 14px 0 0; max-width: 24ch; text-wrap: pretty; }
+h3 { font-family: var(--display); font-weight: var(--display-w); font-size: 31px; line-height: 1.12; letter-spacing: -0.015em; margin: 16px 0 0; }
+.post-meta { margin-left: auto; text-align: right; line-height: 1.7; color: var(--text-2); }
+.lede { font-size: 23px; line-height: 1.45; max-width: 44ch; margin: 34px 0 0; text-wrap: pretty; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 48px; margin-top: 44px; align-items: start; }
+.body-col { min-width: 0; display: flex; flex-direction: column; gap: 22px; max-width: 62ch; }
+.body-wide { display: flex; flex-direction: column; gap: 22px; max-width: 62ch; margin-top: 44px; }
+.body-col p, .body-wide p { font-size: 18px; line-height: 1.68; margin: 0; text-wrap: pretty; }
+.quiet { color: var(--text-2); font-size: 16px !important; }
+.pull { font-family: var(--display); font-weight: var(--display-w); font-size: 25px !important; line-height: 1.3 !important; padding-left: 22px; border-left: 3px solid var(--accent); text-wrap: pretty; }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 0.86em; padding: 2px 6px; border-radius: 5px; background: var(--action-soft); color: var(--accent); }
+aside.side { background: var(--elevated); border: 1px solid var(--border); border-radius: 20px; padding: 26px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+aside.side .eyebrow { color: var(--text-2); }
+.big { font-family: var(--display); font-weight: var(--display-w); font-size: 34px; line-height: 1; }
+.big.accent { color: var(--accent); }
+.side-note { font-size: 13px; line-height: 1.5; color: var(--text-2); }
+
+/* demo */
+.demo { margin-top: 40px; border: 1px solid var(--border); border-radius: 24px; overflow: hidden; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.demo-stage { padding: 44px; min-height: 300px; display: flex; flex-direction: column; justify-content: center; min-width: 0; transition: background 260ms ease; }
+.demo-stage .eyebrow, .demo-body { transition: color 260ms ease; }
+.demo-title { font-family: var(--display); font-weight: var(--display-w); font-size: clamp(34px, 3.6vw, 50px); line-height: 1.04; color: #F2F3EE; margin: 10px 0 0; }
+.demo-title .dot { color: #FCFCA2; }
+.demo-body { font-size: 15px; line-height: 1.55; margin-top: 16px; max-width: 34ch; }
+.demo-panel { background: var(--elevated); padding: 28px; display: flex; flex-direction: column; gap: 22px; min-width: 0; border-left: 1px solid var(--border); }
+.panel-label { color: var(--text-2); font-size: 11px; }
+.opts { display: flex; flex-direction: column; gap: 7px; margin-top: 11px; }
+.opt {
+  display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 12px;
+  border-radius: 10px; cursor: pointer; background: transparent;
+  border: 1px solid var(--border); text-align: left; color: var(--text);
+  font: inherit; font-size: 13px; transition: background 160ms, border-color 160ms;
+}
+.opt[aria-pressed="true"] { background: var(--action-soft); border-color: var(--accent); }
+.opt i { width: 15px; height: 15px; border-radius: 999px; display: block; flex: none; }
+.readout { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border); }
+.readout-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#ratio { font-family: var(--display); font-weight: var(--display-w); font-size: 32px; line-height: 1; }
+#verdict { font-size: 12px; padding: 5px 12px; border-radius: 999px; }
+#note { font-size: 13px; line-height: 1.5; color: var(--text-2); margin-top: 10px; }
+
+/* luminance */
+.lum-card { margin-top: 32px; background: var(--elevated); border: 1px solid var(--border); border-radius: 20px; padding: 28px; }
+.lum-track { position: relative; height: 58px; margin-top: 20px; border-radius: 10px; background: linear-gradient(to right, #000, #fff); }
+.dead { position: absolute; top: 0; bottom: 0; left: 15%; width: 30%; background: rgba(0,0,0,.12); border-left: 2px dashed var(--accent); border-right: 2px dashed var(--accent); }
+.marker { position: absolute; top: -7px; bottom: -7px; width: 4px; border-radius: 2px; background: var(--text); }
+.lum-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); margin-top: 10px; gap: 12px; flex-wrap: wrap; }
+.lum-legend { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-top: 20px; }
+.lum-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.lum-item i { width: 15px; height: 15px; border-radius: 999px; display: block; }
+.zone { font-family: var(--eyebrow); font-size: 10px; letter-spacing: var(--eyebrow-track); text-transform: uppercase; color: var(--accent); }
+
+pre {
+  margin: 24px 0 0; background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  padding: 24px 26px; border-radius: 0;
+  font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.8;
+  overflow-x: auto;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+/* explainer */
+.explain { margin-top: 40px; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+.explain-head { padding: 26px 28px 0; }
+.explain-head .eyebrow { color: var(--accent); }
+.explain-head h3 { margin: 10px 0 0; font-size: 26px; }
+.explain-head p { font-size: 16px; line-height: 1.6; margin: 12px 0 0; max-width: 62ch; color: var(--text-2); }
+.explain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-top: 24px; }
+.ex { padding: 24px 28px; border-top: 1px solid var(--border); min-width: 0; }
+.ex + .ex { border-left: 1px solid var(--border); }
+.ex dt { font-family: var(--display); font-weight: var(--display-w); font-size: 19px; line-height: 1.25; margin: 0; }
+.ex dd { font-size: 14px; line-height: 1.6; margin: 10px 0 0; color: var(--text-2); }
+.ex .num { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--accent); }
+.refs { padding: 22px 28px; border-top: 1px solid var(--border); background: var(--action-soft); }
+.refs .eyebrow { color: var(--text-2); font-size: 10px; }
+.refs ul { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.refs li { font-size: 14px; line-height: 1.5; }
+.refs a { border-bottom: 1px solid currentColor; }
+.refs a:hover { text-decoration: none; }
+.refs .src { color: var(--text-2); }
+
+.takeaways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-top: 28px; }
+.take { background: var(--elevated); border: 1px solid var(--border); border-radius: 18px; padding: 24px; min-width: 0; }
+.take-n { font-family: var(--display); font-weight: var(--display-w); font-size: 30px; line-height: 1; color: var(--accent); }
+.take p { font-size: 15px; line-height: 1.6; margin: 14px 0 0; }
+
+footer { margin-top: 96px; background: var(--elevated); border-top: 1px solid var(--border); }
+.foot-rule { padding: 20px 40px 40px; color: var(--text-2); font-size: 10px; }
+
+@media (max-width: 640px) {
+  .wrap, .nav-inner, .foot-rule { padding-left: 20px; padding-right: 20px; }
+  .hero-main { padding: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+
+<body data-theme="velvet">
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="wordmark">Aura</div>
+    <div class="nav-meta eyebrow">Notas sobre design systems</div>
+    <div class="switcher" id="switcher"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-main">
+      <div class="eyebrow" id="hero-eyebrow">Velvet · día</div>
+      <h1 class="display">Escribo lo que aprendo construyendo un design system<span class="dot">.</span></h1>
+      <p class="hero-dek">Arquitectura de tokens, gobernanza y accesibilidad medida en números. Cada nota trae un artefacto propio adentro: un ratio, un diff, una decisión con fecha.</p>
+      <div class="hero-chips">
+        <span class="chip-hero">SwiftUI</span>
+        <span class="chip-hero">Multi-marca</span>
+        <span class="chip-hero">Accesibilidad verificable</span>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <article>
+      <div class="sec-head">
+        <div>
+          <div class="eyebrow">Nota 01</div>
+          <h2>Mi design system fallaba accesibilidad y no me enteré hasta que lo medí</h2>
+        </div>
+        <div class="post-meta eyebrow"><time datetime="2026-08-16">16 · 08 · 2026</time><br>7 min</div>
+      </div>
+
+      <p class="lede">Un azul que me encantaba daba 2,81:1 sobre su propio texto. El mínimo es 4,5. Lo miré durante semanas sin verlo, porque a ojo se veía bien.</p>
+
+      <div class="grid">
+        <div class="body-col">
+          <p>Estoy construyendo <em>Aura</em>, un design system para SwiftUI con una idea en el centro: un solo contrato semántico y varias identidades encima. Los componentes no piden colores, piden roles — <code>heroSurface</code>, <code>textAccent</code>, <code>onHeroSurface</code> — y cada tema decide a qué color apunta cada rol. Cambiar de identidad no toca ni una vista.</p>
+
+          <p>Uno de esos temas se llama Signal: papel, tinta, un azul gráfico y un amarillo. Lo miré en el simulador muchas veces. Se veía bien. <em>Se veía</em> bien.</p>
+
+          <h3>Lo que pasa cuando lo medís</h3>
+
+          <p>Escribí un test que recorre todos los pares texto/fondo de todos los temas y calcula el contraste según <strong>WCAG 2.2</strong>. Nueve pares por tema, cinco temas: cuarenta y cinco números. Cuarenta y cuatro pasaron.</p>
+
+          <p>El que falló fue el texto secundario del hero de Signal: mi azul claro sobre mi azul. <strong>2,81:1 cuando el mínimo para texto normal es 4,5:1.</strong> No estaba cerca — estaba en la mitad de lo que necesitaba.</p>
+
+          <p class="pull">Yo había mirado esa pantalla decenas de veces. En una pantalla buena, con brillo alto, en una habitación iluminada, con mis ojos. Nada de eso es una medición.</p>
+        </div>
+
+      <div class="explain">
+        <div class="explain-head">
+          <div class="eyebrow">Antes de seguir</div>
+          <h3>De dónde sale ese número</h3>
+          <p>Si nunca auditaste contraste, estos cuatro conceptos son todo lo que hace falta para leer el resto de la nota. No hay nada más: es aritmética sobre los valores RGB de dos colores.</p>
+        </div>
+
+        <dl class="explain-grid">
+          <div class="ex">
+            <dt>WCAG 2.2</dt>
+            <dd>Las <em>Web Content Accessibility Guidelines</em>, el estándar del W3C sobre qué hace que una interfaz sea usable por personas con discapacidad. La versión 2.2 es Recomendación oficial desde octubre de 2023. No es una guía de estilo: en muchos países es la referencia que citan las leyes de accesibilidad digital, y en banca, salud y gobierno suele ser requisito contractual.</dd>
+          </div>
+
+          <div class="ex">
+            <dt>Nivel AA</dt>
+            <dd>WCAG define tres niveles: A (mínimo), AA y AAA. <strong>AA es el que se exige en la práctica</strong> — es el que nombran las normativas y el que auditan las consultoras. AAA es deseable pero restringe tanto la paleta que casi ningún producto lo sostiene entero.</dd>
+          </div>
+
+          <div class="ex">
+            <dt>Luminancia relativa</dt>
+            <dd>Cuánta luz emite un color percibida por el ojo humano, en una escala de <span class="num">0</span> (negro) a <span class="num">1</span> (blanco). No es el brillo del selector de color: cada canal RGB se linealiza y después se pondera según qué tan sensible es el ojo a ese color — el verde pesa <span class="num">0,7152</span>, el rojo <span class="num">0,2126</span> y el azul apenas <span class="num">0,0722</span>. Por eso un azul saturado es mucho más oscuro de lo que parece.</dd>
+          </div>
+
+          <div class="ex">
+            <dt>Ratio de contraste</dt>
+            <dd>Se calcula con las dos luminancias: <span class="num">(L1 + 0,05) / (L2 + 0,05)</span>, con la más clara arriba. Va de <span class="num">1:1</span> (dos colores idénticos) a <span class="num">21:1</span> (negro puro sobre blanco puro). Es simétrico: no importa cuál de los dos es el texto.</dd>
+          </div>
+        </dl>
+
+        <div class="ex" style="border-left:0">
+          <dt style="font-family:var(--display);font-weight:var(--display-w);font-size:19px">Los mínimos que pide AA</dt>
+          <dd style="margin-top:14px">
+            <strong><span class="num">4,5:1</span></strong> para texto normal — el criterio 1.4.3. Es el que aplica a casi todo lo que leés en una pantalla.<br><br>
+            <strong><span class="num">3:1</span></strong> para texto grande (18pt, o 14pt en negrita) — mismo criterio. El tamaño compensa parte del contraste.<br><br>
+            <strong><span class="num">3:1</span></strong> para componentes de interfaz y gráficos — el criterio 1.4.11: bordes de campos, iconos, indicadores de foco. Todo lo que tiene que <em>verse</em> aunque no se lea.
+          </dd>
+        </div>
+
+        <div class="refs">
+          <div class="eyebrow">Las fuentes, de primera mano</div>
+          <ul>
+            <li><a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener">WCAG 2.2</a> <span class="src">· el estándar completo, W3C</span></li>
+            <li><a href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html" target="_blank" rel="noopener">Understanding 1.4.3: Contrast (Minimum)</a> <span class="src">· de dónde salen el 4,5 y el 3</span></li>
+            <li><a href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html" target="_blank" rel="noopener">Understanding 1.4.11: Non-text Contrast</a> <span class="src">· bordes, iconos, foco</span></li>
+            <li><a href="https://www.w3.org/TR/WCAG22/#dfn-relative-luminance" target="_blank" rel="noopener">Definición de luminancia relativa</a> <span class="src">· la fórmula exacta que implementé</span></li>
+            <li><a href="https://webaim.org/resources/contrastchecker/" target="_blank" rel="noopener">WebAIM Contrast Checker</a> <span class="src">· para verificar un par suelto a mano</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="body-wide">
+        <h3>Probalo vos</h3>
+        <p>Estos son los colores reales de Signal. Elegí un fondo y un texto: el número se calcula igual que en mi CI.</p>
+      </div>
+
+        <aside class="side">
+          <div class="eyebrow">De un vistazo</div>
+          <div><div class="big accent">2,81:1</div><div class="side-note">medido en el par que fallaba</div></div>
+          <div><div class="big">4,5:1</div><div class="side-note">el mínimo AA para texto normal</div></div>
+          <div><div class="big">0,24</div><div class="side-note">la luminancia del culpable — plena zona muerta</div></div>
+        </aside>
+      </div>
+
+      <div class="demo">
+        <div class="demo-stage" id="stage">
+          <div class="eyebrow" id="demo-eyebrow">Hoy</div>
+          <div class="demo-title">Tren inferior<span class="dot">.</span></div>
+          <div class="demo-body" id="demo-body">Seis ejercicios, cincuenta minutos, foco en sentadilla.</div>
+        </div>
+        <div class="demo-panel">
+          <div>
+            <div class="panel-label eyebrow">Fondo del hero</div>
+            <div class="opts" id="bg-opts"></div>
+          </div>
+          <div>
+            <div class="panel-label eyebrow">Texto secundario</div>
+            <div class="opts" id="fg-opts"></div>
+          </div>
+          <div class="readout">
+            <div class="readout-row">
+              <span id="ratio">2,81:1</span>
+              <span id="verdict">Falla AA</span>
+            </div>
+            <div id="note"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="body-wide">
+        <h3>La zona muerta</h3>
+        <p>Cuando fui a arreglarlo, mi primer reflejo fue cambiar el texto. Probé el azul más claro, probé el papel, probé el blanco. Ninguno llegaba a 4,5. Y ahí entendí que el problema no era el texto.</p>
+        <p>Volvamos a la fórmula: el ratio se calcula sobre las dos luminancias, y sube o baja según la <em>distancia</em> entre ellas. Mi azul tenía luminancia <strong>0,24</strong>. Para llegar a 4,5:1 el otro color necesitaba estar muchísimo más arriba o muchísimo más abajo — y en 0,24 no hay tanto margen para ninguno de los dos lados.</p>
+        <p>Los colores que caen aproximadamente <strong>entre 0,15 y 0,45</strong> tienen esa propiedad incómoda: están demasiado oscuros para llevar texto oscuro y demasiado claros para llevar texto claro. No hay salida. Le empecé a decir la zona muerta. No es un término de WCAG — es el nombre que le puse al mirar los números de mi paleta.</p>
+      </div>
+
+      <div class="lum-card">
+        <div class="panel-label eyebrow">Luminancia relativa · los primitivos de Signal</div>
+        <div class="lum-track" id="lum-track"><div class="dead"></div></div>
+        <div class="lum-axis">
+          <span>0,0 negro</span><span>zona muerta · 0,15 – 0,45</span><span>1,0 blanco</span>
+        </div>
+        <div class="lum-legend" id="lum-legend"></div>
+      </div>
+
+      <div class="body-wide">
+        <p>La salida no era elegir otro texto: era <strong>oscurecer la superficie</strong>. Cambié el fondo del hero por el azul profundo que ya tenía en la paleta para acciones, y agregué un azul muy pálido para el texto secundario. Ahora da 5,32:1 y 4,94:1. El tema se ve casi igual — un poco más serio, honestamente mejor — y ahora es legible.</p>
+
+        <h3>Lo que cambié para que no vuelva a pasar</h3>
+
+        <p>Tenía una auditoría de contraste desde antes. El problema es que <em>imprimía</em>: generaba un informe lindo que yo miraba cuando me acordaba, o sea casi nunca. Un audit que no rompe nada no es un control, es decoración. Ahora es una aserción, y falla el build.</p>
+        <p>El test recorre los cinco temas; para cada uno, los nueve pares que llevan texto, cada uno con el mínimo que le corresponde — 4,5 para texto normal, 3 para el título grande del hero y para los bordes. <code>AuraContrast.ratio</code> es la fórmula de WCAG implementada tal cual, unas quince líneas.</p>
+      </div>
+
+<pre><code>func testEveryTextPairMeetsAA() {
+    var failures: [String] = []
+
+    for (name, theme) in themes {
+        for (label, fg, bg, required) in pairs(for: theme) {
+            let value = AuraContrast.ratio(fg, bg)
+            if value &lt; required {
+                failures.append("\(name) · \(label): \(value)")
+            }
+        }
+    }
+
+    XCTAssertTrue(failures.isEmpty, "WCAG AA failures:\n" + failures.joined(separator: "\n"))
+}</code></pre>
+
+      <div class="body-wide">
+        <p>Junta todas las fallas en un solo mensaje a propósito. Un build rojo tiene que decirte todo lo que está mal, no la primera cosa que encontró y después hacerte correrlo otra vez.</p>
+        <p>El mismo test encontró algo que yo no había notado: en tres de mis cinco temas, el borde del hero apuntaba al mismo color que su propio fondo. Estaba dibujando bordes invisibles. Un rol que no se distingue del rol que bordea no aporta información — o tiene un valor propio, o no debería existir.</p>
+      </div>
+    </article>
+  </main>
+</div>
+
+<footer>
+  <div class="foot-rule eyebrow" style="max-width:1180px;margin:0 auto;padding-top:40px">Majo Ledesma · construido con Aura</div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var THEMES = [
+    { id: 'blush',  name: 'Blush',  energy: 'polvo',   hero: '#F4C9D6', accent: '#8E3F4E' },
+    { id: 'velvet', name: 'Velvet', energy: 'día',     hero: '#69261F', accent: '#DBD4C6' },
+    { id: 'signal', name: 'Signal', energy: 'gráfico', hero: '#3363AE', accent: '#FCFCA2' },
+    { id: 'matcha', name: 'Matcha', energy: 'fresco',  hero: '#1D2E1B', accent: '#A9C632' },
+    { id: 'noir',   name: 'Noir',   energy: 'noche',   hero: '#2A2430', accent: '#C9A96E' }
+  ];
+
+  var SIGNAL = {
+    paper:    '#F2F3EE',
+    blueVeil: '#E4EBF3',
+    blueSoft: '#D8E2ED',
+    blue:     '#4384E8',
+    blueDeep: '#3363AE',
+    ink:      '#020001'
+  };
+
+  /* WCAG 2.2 relative luminance — ITU-R BT.709 coefficients on sRGB. */
+  function luminance(hex) {
+    var v = hex.replace('#', '');
+    var c = [0, 1, 2].map(function (i) {
+      var x = parseInt(v.substr(i * 2, 2), 16) / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function ratio(a, b) {
+    var l1 = luminance(a), l2 = luminance(b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+  function fmt(n) { return n.toFixed(2).replace('.', ',') + ':1'; }
+
+  /* ——— theme switcher ——— */
+  var current = 'velvet';
+  var switcher = document.getElementById('switcher');
+  var heroEyebrow = document.getElementById('hero-eyebrow');
+
+  THEMES.forEach(function (t) {
+    var b = document.createElement('button');
+    b.className = 'sw';
+    b.type = 'button';
+    b.title = t.name;
+    b.setAttribute('aria-label', 'Tema ' + t.name);
+    b.setAttribute('aria-pressed', String(t.id === current));
+    b.innerHTML = '<span style="background:' + t.hero + '"></span>' +
+                  '<span style="background:' + t.accent + '"></span>';
+    b.addEventListener('click', function () { setTheme(t.id); });
+    switcher.appendChild(b);
+  });
+
+  function setTheme(id) {
+    current = id;
+    document.body.setAttribute('data-theme', id);
+    var t = THEMES.filter(function (x) { return x.id === id; })[0];
+    heroEyebrow.textContent = t.name + ' · ' + t.energy;
+    Array.prototype.forEach.call(switcher.children, function (el, i) {
+      el.setAttribute('aria-pressed', String(THEMES[i].id === id));
+    });
+    try { localStorage.setItem('aura-theme', id); } catch (e) {}
+  }
+
+  try {
+    var saved = localStorage.getItem('aura-theme');
+    if (saved && THEMES.some(function (t) { return t.id === saved; })) setTheme(saved);
+  } catch (e) {}
+
+  /* ——— contrast demo ——— */
+  var state = { bg: 'blue', fg: 'blueSoft' };
+
+  var BG = [
+    { key: 'blue',     label: 'blue · #4384E8' },
+    { key: 'blueDeep', label: 'blueDeep · #3363AE' }
+  ];
+  var FG = [
+    { key: 'blueSoft', label: 'blueSoft · #D8E2ED' },
+    { key: 'blueVeil', label: 'blueVeil · #E4EBF3' },
+    { key: 'paper',    label: 'paper · #F2F3EE' }
+  ];
+
+  function buildOpts(el, list, which) {
+    list.forEach(function (o) {
+      var b = document.createElement('button');
+      b.className = 'opt';
+      b.type = 'button';
+      b.dataset.key = o.key;
+      b.innerHTML = '<i style="background:' + SIGNAL[o.key] + '"></i><span>' + o.label + '</span>';
+      b.addEventListener('click', function () { state[which] = o.key; render(); });
+      el.appendChild(b);
+    });
+  }
+  buildOpts(document.getElementById('bg-opts'), BG, 'bg');
+  buildOpts(document.getElementById('fg-opts'), FG, 'fg');
+
+  var stage = document.getElementById('stage');
+  var demoEyebrow = document.getElementById('demo-eyebrow');
+  var demoBody = document.getElementById('demo-body');
+  var ratioEl = document.getElementById('ratio');
+  var verdictEl = document.getElementById('verdict');
+  var noteEl = document.getElementById('note');
+
+  function render() {
+    var bg = SIGNAL[state.bg], fg = SIGNAL[state.fg];
+    var r = ratio(fg, bg), ok = r >= 4.5;
+
+    stage.style.background = bg;
+    demoEyebrow.style.color = fg;
+    demoBody.style.color = fg;
+
+    ratioEl.textContent = fmt(r);
+    ratioEl.style.color = ok ? 'var(--text)' : 'var(--accent)';
+    verdictEl.textContent = ok ? 'Cumple AA' : 'Falla AA';
+    verdictEl.style.background = ok ? 'var(--action-soft)' : 'var(--accent)';
+    verdictEl.style.color = ok ? 'var(--text)' : 'var(--on-action)';
+    noteEl.textContent = ok
+      ? 'Texto secundario legible sobre esta superficie.'
+      : 'Por debajo de 4,5:1. Esta era exactamente la combinación que tenía publicada.';
+
+    ['bg-opts', 'fg-opts'].forEach(function (id, i) {
+      var which = i === 0 ? 'bg' : 'fg';
+      Array.prototype.forEach.call(document.getElementById(id).children, function (el) {
+        el.setAttribute('aria-pressed', String(el.dataset.key === state[which]));
+      });
+    });
+  }
+  render();
+
+  /* ——— luminance bar ——— */  var track = document.getElementById('lum-track');
+  var legend = document.getElementById('lum-legend');
+  ['ink', 'blueDeep', 'blue', 'blueSoft', 'paper'].forEach(function (k) {
+    var l = luminance(SIGNAL[k]);
+    var dead = l >= 0.15 && l <= 0.45;
+
+    var m = document.createElement('div');
+    m.className = 'marker';
+    m.style.left = 'calc(' + (l * 100).toFixed(1) + '% - 2px)';
+    track.appendChild(m);
+
+    var item = document.createElement('div');
+    item.className = 'lum-item';
+    item.innerHTML = '<i style="background:' + SIGNAL[k] + '"></i>' +
+      '<span class="mono">' + k + ' · ' + l.toFixed(2).replace('.', ',') + '</span>' +
+      (dead ? '<span class="zone">zona muerta</span>' : '');
+    legend.appendChild(item);
+  });
+})();
+</script>
+
+</body>
+</html>
